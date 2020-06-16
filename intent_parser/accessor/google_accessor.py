@@ -3,6 +3,7 @@ from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import AuthorizedSession, Request
 from io import BytesIO
+import httplib2
 import pickle
 import os.path
 import time
@@ -124,9 +125,9 @@ class GoogleAccessor:
             return ''
         sheet_id = create_sheets_request['spreadsheetId']
         if folder_id:
-            res = self._drive_service.files().update(fileId=sheet_id, 
+            res = self._execute_request(self._drive_service.files().update(fileId=sheet_id,
                                                      addParents=folder_id, 
-                                                     removeParents='root').execute()
+                                                     removeParents='root'))
         return sheet_id
     
     def delete_file(self, file_id: str):
@@ -137,7 +138,7 @@ class GoogleAccessor:
         Returns:
             A boolean value. True if the file has been deleted successfully and False, otherwise.
         """
-        response = self._drive_service.files().delete(fileId=file_id).execute()
+        response = self._execute_request(self._drive_service.files().delete(fileId=file_id))
         return not response
    
     def upload_revision(self, document_name, document, folder_id, original_format, title='Untitled', target_format='*/*'):
@@ -162,10 +163,10 @@ class GoogleAccessor:
         }
         fh = BytesIO(document)
         media = MediaIoBaseUpload(fh, mimetype=original_format, resumable=True) 
-        file = self._drive_service.files().insert(body=file_metadata,
+        file = self._execute_request(self._drive_service.files().insert(body=file_metadata,
                                     media_body=media,
                                     convert=True,
-                                    fields='id').execute()
+                                    fields='id'))
         print ('File ID: ' + file.get('id'))
         return file.get('id')
     
@@ -253,11 +254,12 @@ class GoogleAccessor:
             spreadsheetId=self._spreadsheet_id,
             body=body)
         time.sleep(len(requests) / REQUESTS_PER_SEC)
-        return batch_request.execute()
+        http = httplib2.Http()
+        return batch_request.execute(http)
 
     def _execute_request(self, request):
-        time.sleep(1.0 / REQUESTS_PER_SEC)
-        return request.execute()
+        http = httplib2.Http()
+        return request.execute(http)
 
     def set_spreadsheet_id(self, spreadsheet_id: str):
         """
@@ -434,11 +436,11 @@ class GoogleAccessor:
         return row_data
 
     def get_document(self, *, document_id):
-        return self._docs_service.documents().get(documentId=document_id).execute()
+        return self._execute_request(self._docs_service.documents().get(documentId=document_id))
 
     def create_document(self, *, title):
         body = { 'title': title }
-        return self._docs_service.documents().create(body=body).execute()
+        return self._execute_request(self._docs_service.documents().create(body=body))
 
     def get_document_revisions(self, *, document_id):
         """
@@ -458,4 +460,4 @@ class GoogleAccessor:
         return self._drive_service.files().get(fileId=document_id).execute()
 
     def get_document_parents(self, *, document_id):
-        return self._drive_service.parents().list(fileId=document_id).execute()
+        return self._execute_request(self._drive_service.parents().list(fileId=document_id))
