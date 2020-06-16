@@ -118,16 +118,18 @@ class GoogleAccessor:
             }
             
         spreadsheets = self._sheet_service.spreadsheets()
+        http = httplib2.Http()
         create_sheets_request = spreadsheets.create(body=spreadsheet_metadata,
-                                                    fields='spreadsheetId').execute()
+                                                    fields='spreadsheetId').execute(http=http)
         
         if 'spreadsheetId' not in create_sheets_request:
             return ''
         sheet_id = create_sheets_request['spreadsheetId']
         if folder_id:
-            res = self._execute_request(self._drive_service.files().update(fileId=sheet_id,
+            http = httplib2.Http()
+            res = self._drive_service.files().update(fileId=sheet_id,
                                                      addParents=folder_id, 
-                                                     removeParents='root'))
+                                                     removeParents='root').execute(http=http)
         return sheet_id
     
     def delete_file(self, file_id: str):
@@ -138,7 +140,8 @@ class GoogleAccessor:
         Returns:
             A boolean value. True if the file has been deleted successfully and False, otherwise.
         """
-        response = self._execute_request(self._drive_service.files().delete(fileId=file_id))
+        http = httplib2.Http()
+        response = self._drive_service.files().delete(fileId=file_id).execute(http=http)
         return not response
    
     def upload_revision(self, document_name, document, folder_id, original_format, title='Untitled', target_format='*/*'):
@@ -162,11 +165,12 @@ class GoogleAccessor:
             'mimeType': target_format
         }
         fh = BytesIO(document)
-        media = MediaIoBaseUpload(fh, mimetype=original_format, resumable=True) 
-        file = self._execute_request(self._drive_service.files().insert(body=file_metadata,
+        media = MediaIoBaseUpload(fh, mimetype=original_format, resumable=True)
+        http = httplib2.Http()
+        file = self._drive_service.files().insert(body=file_metadata,
                                     media_body=media,
                                     convert=True,
-                                    fields='id'))
+                                    fields='id').execute(http=http)
         print ('File ID: ' + file.get('id'))
         return file.get('id')
     
@@ -206,7 +210,9 @@ class GoogleAccessor:
         files = self._drive_service.files()
         request = files.copy(fileId=file_id,
                              body={'name': new_title})
-        return self._execute_request(request).get('id')
+        http = httplib2.Http()
+        response = request.execute(http=http)
+        return response.get('id')
 
     def create_dictionary_sheets(self):
         """ Creates the standard tabs on the current spreadsheet.
@@ -255,11 +261,11 @@ class GoogleAccessor:
             body=body)
         time.sleep(len(requests) / REQUESTS_PER_SEC)
         http = httplib2.Http()
-        return batch_request.execute(http)
+        return batch_request.execute(http=http)
 
     def _execute_request(self, request):
         http = httplib2.Http()
-        return request.execute(http)
+        return request.execute(http=http)
 
     def set_spreadsheet_id(self, spreadsheet_id: str):
         """
@@ -274,7 +280,8 @@ class GoogleAccessor:
         """
         values = self._sheet_service.spreadsheets().values()
         get = values.get(spreadsheetId=self._spreadsheet_id, range=tab)
-        return self._execute_request(get)
+        http = httplib2.Http()
+        return get.execute(http=http)
 
     def _set_tab_data(self, *, tab, values):
         """
@@ -289,7 +296,8 @@ class GoogleAccessor:
         update_request = values.update(spreadsheetId=self._spreadsheet_id,
                                        range=tab, body=body,
                                        valueInputOption='RAW')
-        self._execute_request(update_request)
+        http = httplib2.Http()
+        update_request.execute(http=http)
 
     def _cache_tab_headers(self, tab):
         """
@@ -436,17 +444,20 @@ class GoogleAccessor:
         return row_data
 
     def get_document(self, *, document_id):
-        return self._execute_request(self._docs_service.documents().get(documentId=document_id))
+        http = httplib2.Http()
+        return self._docs_service.documents().get(documentId=document_id).execute(http=http)
 
     def create_document(self, *, title):
         body = { 'title': title }
-        return self._execute_request(self._docs_service.documents().create(body=body))
+        http = httplib2.Http()
+        return self._docs_service.documents().create(body=body).execute(http=http)
 
     def get_document_revisions(self, *, document_id):
         """
         Returns the list of revisions for the given document_id
         """
-        return self._drive_service.revisions().list(fileId=document_id).execute()
+        http = httplib2.Http()
+        return self._drive_service.revisions().list(fileId=document_id).execute(http=http)
 
     def get_head_revision(self, document_id):
         revisions = self.get_document_revisions(document_id=document_id)
@@ -457,7 +468,9 @@ class GoogleAccessor:
         return str(max(revision_ids))
     
     def get_document_metadata(self, *, document_id):
-        return self._drive_service.files().get(fileId=document_id).execute()
+        http = httplib2.Http()
+        return self._drive_service.files().get(fileId=document_id).execute(http=http)
 
     def get_document_parents(self, *, document_id):
-        return self._execute_request(self._drive_service.parents().list(fileId=document_id))
+        http = httplib2.Http()
+        return self._drive_service.parents().list(fileId=document_id).execute(http=http)
