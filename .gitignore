@@ -1,9 +1,11 @@
 *.DS_Store
 *credentials.json
+*authn.json
 *.log
 **/__pycache__/*
 token.pickle
 .project
 .pydevproject
 .settings/
+.transcriptic
 item-map.json
