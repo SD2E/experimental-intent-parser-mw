@@ -1,6 +1,7 @@
 *.DS_Store
-*credentials.json
 *authn.json
+*credentials.json
+*intent_parser_api_keys.json
 *.log
 **/__pycache__/*
 token.pickle

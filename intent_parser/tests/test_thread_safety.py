@@ -29,7 +29,7 @@ class TestThreadSafety(unittest.TestCase):
 
     def test_thread_safety_on_sequential_requests(self):
         expected_structured_request = {'foo': 'bar'}
-        number_of_runs = 10
+        number_of_runs = 50
         try:
             for _ in range(number_of_runs):
                 self.mock_intent_parser.get_structured_request.return_value = expected_structured_request

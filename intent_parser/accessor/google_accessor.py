@@ -1,8 +1,9 @@
-from googleapiclient.http import  MediaIoBaseUpload
+from googleapiclient.http import MediaIoBaseUpload
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import AuthorizedSession, Request
 from io import BytesIO
+import intent_parser.utils.intent_parser_utils as intent_parser_utils
 import httplib2
 import pickle
 import os.path
@@ -19,6 +20,8 @@ CURR_PATH = os.path.dirname(os.path.realpath(__file__))
 CREDENTIALS_FILE = os.path.join(CURR_PATH, 'credentials.json')
 TOKEN_PICKLE_FILE = os.path.join(CURR_PATH, 'token.pickle')
 REQUESTS_PER_SEC = 0.5
+API_KEYS_FILE = os.path.join(CURR_PATH, 'intent_parser_api_keys.json')
+API_KEY = intent_parser_utils.load_json_file(API_KEYS_FILE)['ip_key']
 
 class GoogleAccessor:
    
@@ -120,7 +123,8 @@ class GoogleAccessor:
         spreadsheets = self._sheet_service.spreadsheets()
         http = httplib2.Http()
         create_sheets_request = spreadsheets.create(body=spreadsheet_metadata,
-                                                    fields='spreadsheetId').execute(http=http)
+                                                    fields='spreadsheetId',
+                                                    key=API_KEY).execute(http=http)
         
         if 'spreadsheetId' not in create_sheets_request:
             return ''
@@ -258,7 +262,8 @@ class GoogleAccessor:
             }
         batch_request = self._sheet_service.spreadsheets().batchUpdate(
             spreadsheetId=self._spreadsheet_id,
-            body=body)
+            body=body,
+            key=API_KEY)
         time.sleep(len(requests) / REQUESTS_PER_SEC)
         http = httplib2.Http()
         return batch_request.execute(http=http)
@@ -279,7 +284,9 @@ class GoogleAccessor:
         Retrieve all the data from a spreadsheet tab.
         """
         values = self._sheet_service.spreadsheets().values()
-        get = values.get(spreadsheetId=self._spreadsheet_id, range=tab)
+        get = values.get(spreadsheetId=self._spreadsheet_id,
+                         range=tab,
+                         key=API_KEY)
         http = httplib2.Http()
         return get.execute(http=http)
 
@@ -295,7 +302,8 @@ class GoogleAccessor:
         values = self._sheet_service.spreadsheets().values()
         update_request = values.update(spreadsheetId=self._spreadsheet_id,
                                        range=tab, body=body,
-                                       valueInputOption='RAW')
+                                       valueInputOption='RAW',
+                                       key=API_KEY)
         http = httplib2.Http()
         update_request.execute(http=http)
 
